@@ -110,9 +110,9 @@ export default function PosTerminal() {
   const productosFiltrados = productos.filter(p => p.nombre.toLowerCase().includes(busquedaProd.toLowerCase()));
 
   return (
-    <div className="animate-fade-in" style={{ display: 'flex', gap: '1.5rem', height: 'calc(100vh - 100px)' }}>
+    <div className="pos-container animate-fade-in" style={{ display: 'flex', gap: '1.5rem', height: 'calc(100vh - 100px)' }}>
       {/* Panel Izquierdo: Catálogo y Búsqueda */}
-      <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div className="pos-catalog" style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '1rem', minWidth: 0 }}>
         <header>
           <h1 style={{ fontSize: '1.8rem', marginBottom: '0.5rem' }}>Punto de Venta (POS)</h1>
           <p style={{ color: 'var(--text-secondary)' }}>Haz clic en un producto para agregarlo al carrito.</p>
@@ -160,8 +160,33 @@ export default function PosTerminal() {
       </div>
 
       {/* Panel Derecho: Carrito de Compras y Cliente */}
-      <div className="glass-panel" style={{ flex: 1.2, display: 'flex', flexDirection: 'column', padding: '1.5rem', minWidth: '380px' }}>
+      <div className="glass-panel pos-cart" style={{ flex: 1.2, display: 'flex', flexDirection: 'column', padding: '1.5rem', minWidth: '380px', height: '100%' }}>
         
+        {/* CSS Overrides para POS Movil */}
+        <style>{`
+          @media (max-width: 1024px) {
+            .pos-container {
+              flex-direction: column !important;
+              height: auto !important;
+              gap: 2rem !important;
+            }
+            .pos-cart {
+              min-width: 100% !important;
+              height: auto !important;
+              position: sticky;
+              bottom: 0;
+              z-index: 10;
+              border-bottom: none;
+              border-left: none;
+              border-right: none;
+              border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+              box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
+            }
+            .pos-catalog {
+              padding-bottom: 20px;
+            }
+          }
+        `}</style>
         {/* Sección Cliente */}
         <div style={{ marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: '1px solid var(--glass-border)' }}>
           <h2 style={{ fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>

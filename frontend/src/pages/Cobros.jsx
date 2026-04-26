@@ -89,12 +89,12 @@ export default function Cobros() {
              if (cuenta.estado === 'PAGADA') return null;
 
              return (
-              <div key={cuenta.id} style={{ 
+              <div key={cuenta.id} className="cobro-card" style={{ 
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
                 padding: '1.5rem', backgroundColor: 'rgba(255,255,255,0.02)', 
-                border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', flexWrap: 'wrap', gap: '1rem'
+                border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', gap: '1.5rem'
               }}>
-                <div style={{ flex: '1 1 300px' }}>
+                <div style={{ flex: 1, minWidth: '250px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                     <h3 style={{ fontSize: '1.1rem' }}>{cuenta.cliente_nombre}</h3>
                     <span style={{ 
@@ -110,11 +110,11 @@ export default function Cobros() {
                   {/* Detalle de Productos Comprados */}
                   <div style={{ backgroundColor: 'rgba(0,0,0,0.2)', padding: '0.75rem', borderRadius: 'var(--radius-sm)' }}>
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                      Productos Facturados:
+                      Productos:
                     </p>
-                    <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+                    <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '0.85rem' }}>
                       {cuenta.detalles && cuenta.detalles.map((prod, idx) => (
-                        <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: idx !== cuenta.detalles.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none', paddingBottom: idx !== cuenta.detalles.length - 1 ? '0.25rem' : '0', marginBottom: idx !== cuenta.detalles.length - 1 ? '0.25rem' : '0' }}>
+                        <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
                           <span>{prod.cantidad}x {prod.nombre}</span>
                           <span style={{ color: 'var(--text-muted)' }}>${(prod.cantidad * prod.precio_unitario).toFixed(2)}</span>
                         </li>
@@ -123,47 +123,43 @@ export default function Cobros() {
                   </div>
                 </div>
 
-                <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: '1 1 200px' }}>
+                <div className="cobro-stats" style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                    Total: ${cuenta.total.toFixed(2)} | Abonado: <span style={{color: 'var(--success)'}}>${cuenta.total_pagado.toFixed(2)}</span>
+                    Total: ${cuenta.total.toFixed(2)}
                   </p>
                   <p style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--danger)' }}>
                     Saldo: ${cuenta.saldo_pendiente.toFixed(2)}
                   </p>
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.75rem', flex: '1 1 auto', justifyContent: 'flex-end', alignItems: 'center' }}>
-                  {/* Input de Abono Parcial */}
-                  <div style={{ position: 'relative', width: '120px' }}>
-                    <DollarSign size={16} style={{ position: 'absolute', left: '0.5rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <div className="cobro-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <div style={{ position: 'relative', width: '100px' }}>
                     <input 
                       type="number" 
                       className="input-field" 
                       placeholder={cuenta.saldo_pendiente.toString()}
                       value={abonosInput[cuenta.id] !== undefined ? abonosInput[cuenta.id] : ''}
                       onChange={(e) => handleMontoChange(cuenta.id, e.target.value)}
-                      style={{ paddingLeft: '1.75rem', paddingRight: '0.5rem', height: '100%', fontSize: '0.9rem' }}
-                      min="0"
-                      max={cuenta.saldo_pendiente}
+                      style={{ paddingLeft: '1rem', fontSize: '0.9rem' }}
                     />
                   </div>
                   
-                  <button 
-                    className="btn btn-secondary" 
-                    onClick={() => registrarAbono(cuenta.id, cuenta.saldo_pendiente)}
-                    title="Abonar monto ingresado o liquidar saldo total"
-                  >
+                  <button className="btn btn-secondary" onClick={() => registrarAbono(cuenta.id, cuenta.saldo_pendiente)}>
                     <CheckCircle size={18} color="var(--success)" /> Abonar
                   </button>
 
-                  <button 
-                    className="btn" 
-                    style={{ backgroundColor: '#25D366', color: 'white', border: 'none' }}
-                    onClick={() => enviarWhatsApp(cuenta)}
-                  >
-                    <Send size={18} /> WhatsApp
+                  <button className="btn" style={{ backgroundColor: '#25D366', color: 'white' }} onClick={() => enviarWhatsApp(cuenta)}>
+                    <Send size={18} /> WA
                   </button>
                 </div>
+
+                <style>{`
+                  @media (max-width: 768px) {
+                    .cobro-card { flex-direction: column !important; align-items: stretch !important; }
+                    .cobro-stats { text-align: left !important; order: -1; }
+                    .cobro-actions { justify-content: space-between !important; }
+                  }
+                `}</style>
               </div>
             );
           })}
