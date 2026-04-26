@@ -27,12 +27,14 @@ const inventoryRoutes = require('./routes/inventoryRoutes');
 const clientRoutes = require('./routes/clientRoutes');
 const salesRoutes = require('./routes/salesRoutes');
 const cobrosRoutes = require('./routes/cobrosRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/inventario', inventoryRoutes);
 app.use('/api/ventas', salesRoutes);
 app.use('/api/cobros', cobrosRoutes);
 app.use('/api/clientes', clientRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Manejo de errores básicos
 app.use((err, req, res, next) => {

@@ -1,18 +1,58 @@
-import { Package, ShoppingCart, Users, DollarSign } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Package, ShoppingCart, Users, DollarSign, Loader2 } from 'lucide-react';
+import api from '../api/axios';
 
 export default function Dashboard() {
+  const [statsData, setStatsData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      const response = await api.get('/dashboard/stats');
+      setStatsData(response.data);
+    } catch (error) {
+      console.error('Error cargando stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const stats = [
-    { title: 'Ventas de Hoy', value: '$1,240.00', icon: <DollarSign size={24} color="#10b981" />, trend: '+12.5%' },
-    { title: 'Cuentas por Cobrar', value: '$850.00', icon: <ShoppingCart size={24} color="#f59e0b" />, trend: 'Pendiente' },
-    { title: 'Productos Activos', value: '1,245', icon: <Package size={24} color="#6366f1" />, trend: 'Stock ok' },
-    { title: 'Nuevos Clientes', value: '48', icon: <Users size={24} color="#ec4899" />, trend: '+5.2%' },
+    { 
+      title: 'Ventas de Hoy', 
+      value: loading ? '...' : `$${statsData?.ventasHoy?.toFixed(2) || '0.00'}`, 
+      icon: <DollarSign size={24} color="#10b981" />, 
+      trend: '+ Real' 
+    },
+    { 
+      title: 'Cuentas por Cobrar', 
+      value: loading ? '...' : `$${statsData?.cuentasCobrar?.toFixed(2) || '0.00'}`, 
+      icon: <ShoppingCart size={24} color="#f59e0b" />, 
+      trend: 'Pendiente' 
+    },
+    { 
+      title: 'Productos Activos', 
+      value: loading ? '...' : (statsData?.productosActivos || '0'), 
+      icon: <Package size={24} color="#6366f1" />, 
+      trend: 'Stock' 
+    },
+    { 
+      title: 'Total Clientes', 
+      value: loading ? '...' : (statsData?.totalClientes || '0'), 
+      icon: <Users size={24} color="#ec4899" />, 
+      trend: 'Base' 
+    },
   ];
 
   return (
     <div className="animate-fade-in">
       <header style={{ marginBottom: '2rem' }}>
         <h1 style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Resumen General</h1>
-        <p style={{ color: 'var(--text-secondary)' }}>Bienvenido de nuevo al panel de control.</p>
+        <p style={{ color: 'var(--text-secondary)' }}>Aquí tienes los números reales de tu negocio hoy.</p>
       </header>
 
       {/* Stats Grid */}
@@ -23,7 +63,7 @@ export default function Dashboard() {
         marginBottom: '2rem'
       }}>
         {stats.map((stat, idx) => (
-          <div key={idx} className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
+          <div key={idx} className="glass-panel animate-fade-in" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', animationDelay: `${idx * 0.1}s` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
               <div style={{ 
                 padding: '0.75rem', 
@@ -34,14 +74,16 @@ export default function Dashboard() {
               </div>
               <span style={{ 
                 fontSize: '0.85rem', fontWeight: '500', 
-                color: stat.trend.includes('+') ? 'var(--success)' : 'var(--text-secondary)',
-                backgroundColor: stat.trend.includes('+') ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255,255,255,0.05)',
+                color: 'var(--text-secondary)',
+                backgroundColor: 'rgba(255,255,255,0.05)',
                 padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-full)'
               }}>
                 {stat.trend}
               </span>
             </div>
-            <h3 style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>{stat.value}</h3>
+            <h3 style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>
+              {loading ? <Loader2 className="animate-spin" size={20} /> : stat.value}
+            </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{stat.title}</p>
           </div>
         ))}
