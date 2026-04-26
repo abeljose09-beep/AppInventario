@@ -7,6 +7,7 @@ import PosTerminal from './pages/PosTerminal';
 import Inventory from './pages/Inventory';
 import Cobros from './pages/Cobros';
 import Clientes from './pages/Clientes';
+import Historial from './pages/Historial';
 import './index.css';
 
 function App() {
@@ -34,6 +35,7 @@ function App() {
           <Route path="/ventas" element={<PosTerminal />} />
           <Route path="/cobros" element={<Cobros />} />
           <Route path="/clientes" element={<Clientes />} />
+          <Route path="/historial" element={<Historial />} />
         </Route>
       </Routes>
     </BrowserRouter>

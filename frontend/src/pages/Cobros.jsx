@@ -62,11 +62,28 @@ export default function Cobros() {
     (c.numero_referencia && c.numero_referencia.includes(busqueda))
   );
 
+  // Agrupar cobros por cliente
+  const cobrosAgrupados = filtradas.reduce((acc, current) => {
+    const cliente = current.cliente_nombre || 'Cliente Desconocido';
+    if (!acc[cliente]) {
+      acc[cliente] = {
+        nombre: cliente,
+        totalDeuda: 0,
+        cuentas: []
+      };
+    }
+    acc[cliente].cuentas.push(current);
+    acc[cliente].totalDeuda += current.saldo_pendiente;
+    return acc;
+  }, {});
+
+  const clientesConDeuda = Object.values(cobrosAgrupados);
+
   return (
     <div className="animate-fade-in">
       <header style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Cuentas de Cobro</h1>
-        <p style={{ color: 'var(--text-secondary)' }}>Gestiona tu cartera, registra abonos parciales y envía notificaciones.</p>
+        <h1 style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Cartera de Clientes</h1>
+        <p style={{ color: 'var(--text-secondary)' }}>Gestiona los saldos pendientes agrupados por cliente.</p>
       </header>
 
       <div className="glass-panel" style={{ padding: '1.5rem' }}>
@@ -84,85 +101,74 @@ export default function Cobros() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gap: '1rem' }}>
-          {filtradas.map(cuenta => {
-             if (cuenta.estado === 'PAGADA') return null;
-
-             return (
-              <div key={cuenta.id} className="cobro-card" style={{ 
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-                padding: '1.5rem', backgroundColor: 'rgba(255,255,255,0.02)', 
-                border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', gap: '1.5rem'
-              }}>
-                <div style={{ flex: 1, minWidth: '250px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    <h3 style={{ fontSize: '1.1rem' }}>{cuenta.cliente_nombre}</h3>
-                    <span style={{ 
-                      padding: '0.2rem 0.5rem', borderRadius: 'var(--radius-sm)', fontSize: '0.75rem', 
-                      backgroundColor: cuenta.estado === 'PENDIENTE' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(99, 102, 241, 0.1)',
-                      color: cuenta.estado === 'PENDIENTE' ? 'var(--warning)' : 'var(--accent-primary)'
-                    }}>
-                      {cuenta.estado}
-                    </span>
-                  </div>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '0.75rem' }}>Ref: {cuenta.numero_referencia}</p>
-                  
-                  {/* Detalle de Productos Comprados */}
-                  <div style={{ backgroundColor: 'rgba(0,0,0,0.2)', padding: '0.75rem', borderRadius: 'var(--radius-sm)' }}>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                      Productos:
-                    </p>
-                    <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '0.85rem' }}>
-                      {cuenta.detalles && cuenta.detalles.map((prod, idx) => (
-                        <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
-                          <span>{prod.cantidad}x {prod.nombre}</span>
-                          <span style={{ color: 'var(--text-muted)' }}>${(prod.cantidad * prod.precio_unitario).toFixed(2)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+        <div style={{ display: 'grid', gap: '2rem' }}>
+          {clientesConDeuda.map((grupo, idx) => (
+            <div key={idx} className="glass-panel" style={{ padding: '1.5rem', borderLeft: '4px solid var(--warning)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                <div>
+                  <h2 style={{ fontSize: '1.4rem', color: 'var(--text-primary)' }}>{grupo.nombre}</h2>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{grupo.cuentas.length} facturas pendientes</p>
                 </div>
-
-                <div className="cobro-stats" style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                    Total: ${cuenta.total.toFixed(2)}
-                  </p>
-                  <p style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--danger)' }}>
-                    Saldo: ${cuenta.saldo_pendiente.toFixed(2)}
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Deuda Total</p>
+                  <p style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'var(--danger)' }}>
+                    ${grupo.totalDeuda.toFixed(2)}
                   </p>
                 </div>
-
-                <div className="cobro-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                  <div style={{ position: 'relative', width: '100px' }}>
-                    <input 
-                      type="number" 
-                      className="input-field" 
-                      placeholder={cuenta.saldo_pendiente.toString()}
-                      value={abonosInput[cuenta.id] !== undefined ? abonosInput[cuenta.id] : ''}
-                      onChange={(e) => handleMontoChange(cuenta.id, e.target.value)}
-                      style={{ paddingLeft: '1rem', fontSize: '0.9rem' }}
-                    />
-                  </div>
-                  
-                  <button className="btn btn-secondary" onClick={() => registrarAbono(cuenta.id, cuenta.saldo_pendiente)}>
-                    <CheckCircle size={18} color="var(--success)" /> Abonar
-                  </button>
-
-                  <button className="btn" style={{ backgroundColor: '#25D366', color: 'white' }} onClick={() => enviarWhatsApp(cuenta)}>
-                    <Send size={18} /> WA
-                  </button>
-                </div>
-
-                <style>{`
-                  @media (max-width: 768px) {
-                    .cobro-card { flex-direction: column !important; align-items: stretch !important; }
-                    .cobro-stats { text-align: left !important; order: -1; }
-                    .cobro-actions { justify-content: space-between !important; }
-                  }
-                `}</style>
               </div>
-            );
-          })}
+
+              <div style={{ display: 'grid', gap: '1rem' }}>
+                {grupo.cuentas.map(cuenta => (
+                  <div key={cuenta.id} className="cobro-card" style={{ 
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                    padding: '1.25rem', backgroundColor: 'rgba(255,255,255,0.03)', 
+                    border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', gap: '1rem'
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontWeight: '600', fontSize: '0.95rem' }}>Ref: {cuenta.numero_referencia}</p>
+                      <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Total factura: ${cuenta.total.toFixed(2)}</p>
+                      
+                      <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        <strong>Items:</strong> {cuenta.detalles?.map(d => `${d.cantidad}x ${d.nombre}`).join(', ')}
+                      </div>
+                    </div>
+
+                    <div style={{ textAlign: 'center', minWidth: '100px' }}>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Saldo Pendiente</p>
+                      <p style={{ fontWeight: 'bold', color: 'var(--warning)' }}>${cuenta.saldo_pendiente.toFixed(2)}</p>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <input 
+                        type="number" 
+                        className="input-field" 
+                        placeholder="Monto"
+                        value={abonosInput[cuenta.id] || ''}
+                        onChange={(e) => handleMontoChange(cuenta.id, e.target.value)}
+                        style={{ width: '90px', padding: '0.4rem', fontSize: '0.85rem' }}
+                      />
+                      <button className="btn btn-secondary" onClick={() => registrarAbono(cuenta.id, cuenta.saldo_pendiente)} style={{ padding: '0.4rem 0.8rem' }}>
+                        <CheckCircle size={16} color="var(--success)" />
+                      </button>
+                      <button className="btn" style={{ backgroundColor: '#25D366', color: 'white', padding: '0.4rem 0.8rem' }} onClick={() => enviarWhatsApp(cuenta)}>
+                        <Send size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {clientesConDeuda.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+              <AlertCircle size={48} style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
+              <p>No hay saldos pendientes por mostrar</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
 
           {filtradas.length === 0 && (
             <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>

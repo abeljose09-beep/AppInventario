@@ -12,6 +12,12 @@ exports.crearVenta = async (req, res) => {
     const compraRef = db.collection('compras').doc();
 
     await db.runTransaction(async (transaction) => {
+      // 0. Obtener nombre del cliente
+      const clienteRef = db.collection('clientes').doc(cliente_id);
+      const clienteDoc = await transaction.get(clienteRef);
+      if (!clienteDoc.exists) throw new Error("Cliente no encontrado");
+      const cliente_nombre = clienteDoc.data().nombre_completo;
+
       // Validar stock primero
       const productDocs = [];
       for (const item of productos) {
@@ -28,13 +34,14 @@ exports.crearVenta = async (req, res) => {
 
       // 1. Guardar la compra
       const nuevaCompra = {
-        empresa_id, cliente_id, usuario_id, numero_referencia,
+        empresa_id, cliente_id, cliente_nombre, usuario_id, numero_referencia,
         subtotal, impuestos, descuento, total, tipo_pago, estado: estado_compra,
         fecha_compra
       };
       transaction.set(compraRef, nuevaCompra);
 
       // 2. Procesar productos y stock
+      const detallesList = [];
       for (const { ref, doc, item } of productDocs) {
         const itemSubtotal = item.cantidad * item.precio_unitario;
         const currentStock = doc.data().stock_actual;
@@ -44,13 +51,15 @@ exports.crearVenta = async (req, res) => {
 
         // Guardar detalle compra
         const detalleRef = compraRef.collection('detalles').doc();
-        transaction.set(detalleRef, {
+        const detalleData = {
           producto_id: item.producto_id,
           cantidad: item.cantidad,
           precio_unitario: item.precio_unitario,
           subtotal: itemSubtotal,
-          nombre: doc.data().nombre // Optimizacion NoSQL
-        });
+          nombre: doc.data().nombre
+        };
+        transaction.set(detalleRef, detalleData);
+        detallesList.push(detalleData);
 
         // Registrar movimiento
         const movRef = db.collection('movimientos_inventario').doc();
@@ -88,9 +97,22 @@ exports.crearVenta = async (req, res) => {
 exports.obtenerVentas = async (req, res) => {
   try {
     const { empresa_id } = req.usuario;
-    const snapshot = await db.collection('compras').where('empresa_id', '==', empresa_id).get();
+    // Traer ventas ordenadas por fecha descendente
+    const snapshot = await db.collection('compras')
+      .where('empresa_id', '==', empresa_id)
+      .orderBy('fecha_compra', 'desc')
+      .get();
     
-    const ventas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const ventas = [];
+    for (const doc of snapshot.docs) {
+      const data = doc.data();
+      // Traer detalles (subcoleccion)
+      const detallesSnapshot = await doc.ref.collection('detalles').get();
+      const detalles = detallesSnapshot.docs.map(d => d.data());
+      
+      ventas.push({ id: doc.id, ...data, detalles });
+    }
+    
     res.json(ventas);
   } catch (error) {
     console.error('Error al obtener ventas:', error);

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Outlet, Navigate, Link, useLocation } from 'react-router-dom';
-import { Package, Users, ShoppingCart, LayoutDashboard, LogOut, Receipt, Menu, X } from 'lucide-react';
+import { Package, Users, ShoppingCart, LayoutDashboard, LogOut, Receipt, Menu, X, History } from 'lucide-react';
 
 export default function MainLayout({ isAuthenticated, setAuth }) {
   const location = useLocation();
@@ -20,6 +20,7 @@ export default function MainLayout({ isAuthenticated, setAuth }) {
     { name: 'Clientes', path: '/clientes', icon: <Users size={20} /> },
     { name: 'Ventas (POS)', path: '/ventas', icon: <ShoppingCart size={20} /> },
     { name: 'Cobros', path: '/cobros', icon: <Receipt size={20} /> },
+    { name: 'Historial', path: '/historial', icon: <History size={20} /> },
   ];
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
