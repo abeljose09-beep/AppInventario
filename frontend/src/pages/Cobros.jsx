@@ -169,15 +169,5 @@ export default function Cobros() {
         </div>
       </div>
     </div>
-
-          {filtradas.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-              <AlertCircle size={48} style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
-              <p>No hay cuentas pendientes por cobrar</p>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
   );
 }
