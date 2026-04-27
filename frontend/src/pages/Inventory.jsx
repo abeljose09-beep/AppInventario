@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, Filter, Edit, Trash2, X } from 'lucide-react';
+import { Search, Plus, Filter, Edit, Trash2, X, AlertTriangle, Bell } from 'lucide-react';
 import api from '../api/axios';
 
 export default function Inventory() {
@@ -67,9 +67,13 @@ export default function Inventory() {
     (p.codigo_barras && p.codigo_barras.includes(busqueda))
   );
 
+  const productosConStockBajo = productos.filter(p => 
+    p.estado === 'ACTIVO' && Number(p.stock_actual) <= Number(p.stock_minimo || 5)
+  );
+
   return (
     <div className="animate-fade-in" style={{ position: 'relative' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2rem' }}>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem' }}>
         <div>
           <h1 style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Inventario</h1>
           <p style={{ color: 'var(--text-secondary)' }}>Gestiona tus productos y controla el stock en tiempo real.</p>
@@ -79,6 +83,23 @@ export default function Inventory() {
           <Plus size={18} /> Nuevo Producto
         </button>
       </header>
+
+      {/* Alertas de Stock Bajo */}
+      {productosConStockBajo.length > 0 && (
+        <div className="glass-panel animate-fade-in" style={{ padding: '1rem 1.5rem', marginBottom: '1.5rem', borderLeft: '4px solid var(--warning)', backgroundColor: 'rgba(245, 158, 11, 0.08)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+            <Bell size={20} color="var(--warning)" />
+            <p style={{ fontWeight: '600', color: 'var(--warning)' }}>⚠️ {productosConStockBajo.length} producto(s) con stock bajo o agotado</p>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            {productosConStockBajo.map(p => (
+              <span key={p.id} style={{ padding: '0.25rem 0.75rem', backgroundColor: p.stock_actual === 0 ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)', color: p.stock_actual === 0 ? 'var(--danger)' : 'var(--warning)', borderRadius: 'var(--radius-full)', fontSize: '0.8rem', fontWeight: '500' }}>
+                {p.nombre}: {p.stock_actual === 0 ? '⛔ AGOTADO' : `${p.stock_actual} / mín.${p.stock_minimo}`}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="glass-panel" style={{ padding: '1.5rem' }}>
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>

@@ -8,6 +8,9 @@ import Inventory from './pages/Inventory';
 import Cobros from './pages/Cobros';
 import Clientes from './pages/Clientes';
 import Historial from './pages/Historial';
+import Proveedores from './pages/Proveedores';
+import Gastos from './pages/Gastos';
+import ControlCaja from './pages/ControlCaja';
 import './index.css';
 
 function App() {
@@ -36,6 +39,9 @@ function App() {
           <Route path="/cobros" element={<Cobros />} />
           <Route path="/clientes" element={<Clientes />} />
           <Route path="/historial" element={<Historial />} />
+          <Route path="/proveedores" element={<Proveedores />} />
+          <Route path="/gastos" element={<Gastos />} />
+          <Route path="/caja" element={<ControlCaja />} />
         </Route>
       </Routes>
     </BrowserRouter>
