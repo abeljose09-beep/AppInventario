@@ -25,6 +25,7 @@ export default function PosTerminal() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [ultimaVenta, setUltimaVenta] = useState(null);
   const [showTicket, setShowTicket] = useState(false);
+  const [errorCarga, setErrorCarga] = useState(null);
   const barcodeBuffer = useRef('');
   const barcodeTimer = useRef(null);
   const barcodeInputRef = useRef(null);
@@ -34,20 +35,23 @@ export default function PosTerminal() {
   }, []);
 
   const cargarDatosBasicos = async () => {
+    setErrorCarga(null);
     // Cargar Productos
     try {
       const resProd = await api.get('/inventario/productos');
-      setProductos(resProd.data.filter(p => p.estado === 'ACTIVO'));
+      setProductos(Array.isArray(resProd.data) ? resProd.data.filter(p => p.estado === 'ACTIVO') : []);
     } catch (error) {
       console.error('Error cargando productos para POS:', error);
+      setErrorCarga("Error al cargar productos: " + (error.response?.data?.message || error.message));
     }
 
     // Cargar Clientes
     try {
       const resCli = await api.get('/clientes');
-      setClientesBase(resCli.data || []);
+      setClientesBase(Array.isArray(resCli.data) ? resCli.data : []);
     } catch (error) {
       console.error('Error cargando clientes para POS:', error);
+      if (!errorCarga) setErrorCarga("Error al cargar clientes: " + (error.response?.data?.message || error.message));
     }
   };
 
@@ -246,6 +250,12 @@ export default function PosTerminal() {
           <h1 style={{ fontSize: '1.8rem', marginBottom: '0.5rem' }}>Punto de Venta (POS)</h1>
           <p style={{ color: 'var(--text-secondary)' }}>Haz clic en un producto para agregarlo al carrito.</p>
         </header>
+
+        {errorCarga && (
+          <div style={{ padding: '0.75rem', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', border: '1px solid var(--danger)' }}>
+            ⚠️ {errorCarga}
+          </div>
+        )}
 
         <div style={{ position: 'relative' }}>
           <Search size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />

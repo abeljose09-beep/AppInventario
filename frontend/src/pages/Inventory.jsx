@@ -11,16 +11,21 @@ export default function Inventory() {
     precio_costo: '', precio_venta: '', stock_actual: '', stock_minimo: 5
   });
 
+  const [errorCarga, setErrorCarga] = useState(null);
+
   useEffect(() => {
     cargarProductos();
   }, []);
 
   const cargarProductos = async () => {
     try {
+      setErrorCarga(null);
       const response = await api.get('/inventario/productos');
-      setProductos(response.data);
+      console.log("Productos recibidos:", response.data);
+      setProductos(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error cargando inventario:', error);
+      setErrorCarga(error.response?.data?.message || error.message);
     }
   };
 
@@ -83,6 +88,13 @@ export default function Inventory() {
           <Plus size={18} /> Nuevo Producto
         </button>
       </header>
+
+      {errorCarga && (
+        <div style={{ padding: '1rem', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', border: '1px solid var(--danger)' }}>
+          <strong>Error al cargar datos:</strong> {errorCarga}
+          <button onClick={cargarProductos} style={{ marginLeft: '1rem', textDecoration: 'underline', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }}>Reintentar</button>
+        </div>
+      )}
 
       {/* Alertas de Stock Bajo */}
       {productosConStockBajo.length > 0 && (
