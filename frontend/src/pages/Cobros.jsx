@@ -1,15 +1,46 @@
 import { useState, useEffect } from 'react';
-import { Send, CheckCircle, Search, AlertCircle, DollarSign } from 'lucide-react';
+import { Send, CheckCircle, Search, AlertCircle, DollarSign, Plus, X } from 'lucide-react';
 import api from '../api/axios';
 
 export default function Cobros() {
   const [cuentas, setCuentas] = useState([]);
   const [busqueda, setBusqueda] = useState('');
   const [abonosInput, setAbonosInput] = useState({}); 
+  const [clientes, setClientes] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [nuevaCuenta, setNuevaCuenta] = useState({ cliente_id: '', monto: '', concepto: '' });
 
   useEffect(() => {
     cargarCuentas();
+    cargarClientes();
   }, []);
+
+  const cargarClientes = async () => {
+    try {
+      const res = await api.get('/clientes');
+      setClientes(res.data);
+    } catch (err) {
+      console.error('Error cargando clientes:', err);
+    }
+  };
+
+  const crearCuentaManual = async (e) => {
+    e.preventDefault();
+    if (!nuevaCuenta.cliente_id || !nuevaCuenta.monto || Number(nuevaCuenta.monto) <= 0) {
+      alert('Completa los campos obligatorios y usa un monto válido.');
+      return;
+    }
+    try {
+      await api.post('/cobros/manual', nuevaCuenta);
+      alert('Cuenta de cobro creada exitosamente');
+      setShowModal(false);
+      setNuevaCuenta({ cliente_id: '', monto: '', concepto: '' });
+      cargarCuentas();
+    } catch (err) {
+      console.error(err);
+      alert('Hubo un error al crear la cuenta.');
+    }
+  };
 
   const cargarCuentas = async () => {
     try {
@@ -91,9 +122,14 @@ export default function Cobros() {
 
   return (
     <div className="animate-fade-in">
-      <header style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Cartera de Clientes</h1>
-        <p style={{ color: 'var(--text-secondary)' }}>Gestiona los saldos pendientes agrupados por cliente.</p>
+      <header style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <h1 style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Cartera de Clientes</h1>
+          <p style={{ color: 'var(--text-secondary)' }}>Gestiona los saldos pendientes agrupados por cliente.</p>
+        </div>
+        <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+          <Plus size={18} /> Nueva Cuenta de Cobro
+        </button>
       </header>
 
       <div className="glass-panel" style={{ padding: '1.5rem' }}>
@@ -158,8 +194,8 @@ export default function Cobros() {
                         onChange={(e) => handleMontoChange(cuenta.id, e.target.value)}
                         style={{ width: '90px', padding: '0.4rem', fontSize: '0.85rem' }}
                       />
-                      <button className="btn btn-secondary" onClick={() => registrarAbono(cuenta.id, cuenta.saldo_pendiente)} style={{ padding: '0.4rem 0.8rem' }} title="Registrar abono">
-                        <CheckCircle size={16} color="var(--success)" />
+                      <button className="btn btn-secondary" onClick={() => registrarAbono(cuenta.id, cuenta.saldo_pendiente)} style={{ padding: '0.4rem 0.8rem', fontWeight: 'bold', color: 'var(--success)', borderColor: 'rgba(16, 185, 129, 0.3)', backgroundColor: 'rgba(16, 185, 129, 0.1)' }} title="Registrar abono">
+                        Abonar
                       </button>
                     </div>
                   </div>
@@ -176,6 +212,63 @@ export default function Cobros() {
           )}
         </div>
       </div>
+
+      {/* Modal Nueva Cuenta de Cobro */}
+      {showModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div className="glass-panel animate-fade-in" style={{ width: '100%', maxWidth: '500px', padding: '2rem', position: 'relative' }}>
+            <button onClick={() => setShowModal(false)} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}>
+              <X size={24} />
+            </button>
+            <h2 style={{ marginBottom: '1.5rem', fontSize: '1.5rem', fontFamily: "'Outfit', sans-serif" }}>Nueva Cuenta de Cobro</h2>
+            
+            <form onSubmit={crearCuentaManual}>
+              <div className="input-group">
+                <label>Cliente *</label>
+                <select 
+                  className="input-field" 
+                  value={nuevaCuenta.cliente_id} 
+                  onChange={e => setNuevaCuenta({...nuevaCuenta, cliente_id: e.target.value})}
+                  required
+                >
+                  <option value="">Selecciona un cliente...</option>
+                  {clientes.map(c => (
+                    <option key={c.id} value={c.id}>{c.nombre_completo} - {c.documento_identidad}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="input-group">
+                <label>Monto de la Deuda ($) *</label>
+                <input 
+                  type="number" 
+                  className="input-field" 
+                  value={nuevaCuenta.monto} 
+                  onChange={e => setNuevaCuenta({...nuevaCuenta, monto: e.target.value})}
+                  min="1"
+                  step="0.01"
+                  required
+                />
+              </div>
+
+              <div className="input-group" style={{ marginBottom: '2rem' }}>
+                <label>Concepto (Opcional)</label>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  placeholder="Ej: Saldo anterior, Servicio, etc."
+                  value={nuevaCuenta.concepto} 
+                  onChange={e => setNuevaCuenta({...nuevaCuenta, concepto: e.target.value})}
+                />
+              </div>
+
+              <button type="submit" className="btn btn-primary w-full" style={{ padding: '0.8rem', fontSize: '1.05rem' }}>
+                Crear y Sumar a la Deuda
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

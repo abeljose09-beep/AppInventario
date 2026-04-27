@@ -86,3 +86,47 @@ exports.registrarAbono = async (req, res) => {
     res.status(500).json({ message: 'Error al registrar abono' });
   }
 };
+
+exports.crearCuentaCobro = async (req, res) => {
+  try {
+    const { empresa_id, id: usuario_id } = req.usuario;
+    const { cliente_id, monto, concepto } = req.body;
+    
+    if (!cliente_id || !monto || monto <= 0) {
+      return res.status(400).json({ message: 'Datos incompletos o monto inválido' });
+    }
+
+    const numero_referencia = `CXC-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    
+    const clienteRef = db.collection('clientes').doc(cliente_id);
+    const clienteDoc = await clienteRef.get();
+    if (!clienteDoc.exists) return res.status(404).json({ message: 'Cliente no encontrado' });
+    
+    const cliente_nombre = clienteDoc.data().nombre_completo;
+    const compraRef = db.collection('compras').doc();
+
+    await db.runTransaction(async (transaction) => {
+      const nuevaCompra = {
+        empresa_id, cliente_id, cliente_nombre, usuario_id, numero_referencia,
+        subtotal: Number(monto), impuestos: 0, descuento: 0, total: Number(monto), 
+        tipo_pago: 'CREDITO', estado: 'PENDIENTE',
+        fecha_compra: new Date().toISOString()
+      };
+      transaction.set(compraRef, nuevaCompra);
+
+      const detalleRef = compraRef.collection('detalles').doc();
+      transaction.set(detalleRef, {
+        producto_id: 'GENERICO',
+        cantidad: 1,
+        precio_unitario: Number(monto),
+        subtotal: Number(monto),
+        nombre: concepto || 'Cuenta de Cobro Manual'
+      });
+    });
+
+    res.status(201).json({ message: 'Cuenta de cobro creada exitosamente', id: compraRef.id });
+  } catch (error) {
+    console.error('Error al crear cuenta de cobro:', error);
+    res.status(500).json({ message: 'Error interno al crear cuenta' });
+  }
+};

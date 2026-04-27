@@ -11,4 +11,7 @@ router.get('/pendientes', verificarRol(['SUPERUSUARIO', 'ADMINISTRADOR']), cobro
 // Registrar pago parcial o total a una cuenta
 router.post('/:compra_id/abono', verificarRol(['SUPERUSUARIO', 'ADMINISTRADOR']), cobrosController.registrarAbono);
 
+// Crear cuenta de cobro manual
+router.post('/manual', verificarRol(['SUPERUSUARIO', 'ADMINISTRADOR']), cobrosController.crearCuentaCobro);
+
 module.exports = router;
