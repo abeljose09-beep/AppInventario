@@ -28,6 +28,7 @@ exports.obtenerCuentasPendientes = async (req, res) => {
         total: cuentaData.total,
         estado: cuentaData.estado,
         fecha_compra: cuentaData.fecha_compra,
+        cliente_id: cuentaData.cliente_id,
         cliente_nombre: clienteData.nombre_completo || 'Desconocido',
         cliente_telefono: clienteData.telefono || '',
         total_pagado,
@@ -56,7 +57,11 @@ exports.registrarAbono = async (req, res) => {
       const compraDoc = await transaction.get(compraRef);
       if (!compraDoc.exists) throw new Error('Compra no encontrada');
       
+      const pagosSnapshot = await transaction.get(compraRef.collection('pagos'));
+      
       const totalCompra = Number(compraDoc.data().total);
+      let totalPagado = Number(monto);
+      pagosSnapshot.forEach(p => { totalPagado += Number(p.data().monto); });
 
       const pagoRef = compraRef.collection('pagos').doc();
       transaction.set(pagoRef, {
@@ -67,10 +72,6 @@ exports.registrarAbono = async (req, res) => {
         comprobante_url: comprobante_url || '',
         fecha_pago: new Date().toISOString()
       });
-
-      const pagosSnapshot = await transaction.get(compraRef.collection('pagos'));
-      let totalPagado = Number(monto);
-      pagosSnapshot.forEach(p => { totalPagado += Number(p.data().monto); });
 
       let nuevoEstado = 'ABONADA';
       if (totalPagado >= totalCompra) {
@@ -84,6 +85,74 @@ exports.registrarAbono = async (req, res) => {
   } catch (error) {
     console.error('Error al registrar abono Firebase:', error);
     res.status(500).json({ message: 'Error al registrar abono' });
+  }
+};
+
+exports.registrarAbonoGlobal = async (req, res) => {
+  try {
+    const { empresa_id, id: usuario_id } = req.usuario;
+    const { cliente_id, monto, metodo_pago } = req.body;
+    let montoRestante = Number(monto);
+
+    if (!cliente_id || montoRestante <= 0) return res.status(400).json({ message: 'Datos inválidos' });
+
+    await db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(
+        db.collection('compras')
+          .where('empresa_id', '==', empresa_id)
+          .where('cliente_id', '==', cliente_id)
+          .where('estado', 'in', ['PENDIENTE', 'ABONADA'])
+      );
+
+      if (snapshot.empty) throw new Error('El cliente no tiene deudas pendientes');
+
+      const compras = [];
+      for (const doc of snapshot.docs) {
+        const pagosSnap = await transaction.get(doc.ref.collection('pagos'));
+        let pagado = 0;
+        pagosSnap.forEach(p => pagado += Number(p.data().monto));
+        compras.push({
+          ref: doc.ref,
+          data: doc.data(),
+          pagado
+        });
+      }
+
+      compras.sort((a, b) => new Date(a.data.fecha_compra) - new Date(b.data.fecha_compra));
+
+      for (const compra of compras) {
+        if (montoRestante <= 0) break;
+        
+        const saldoPendiente = Number(compra.data.total) - compra.pagado;
+        if (saldoPendiente <= 0) continue;
+
+        const montoAAplicar = Math.min(saldoPendiente, montoRestante);
+        
+        const pagoRef = compra.ref.collection('pagos').doc();
+        transaction.set(pagoRef, {
+          empresa_id,
+          usuario_id,
+          monto: montoAAplicar,
+          metodo_pago: metodo_pago || 'TRANSFERENCIA',
+          comprobante_url: '',
+          fecha_pago: new Date().toISOString()
+        });
+
+        const nuevoTotalPagado = compra.pagado + montoAAplicar;
+        let nuevoEstado = 'ABONADA';
+        if (nuevoTotalPagado >= Number(compra.data.total)) {
+          nuevoEstado = 'PAGADA';
+        }
+
+        transaction.update(compra.ref, { estado: nuevoEstado });
+        montoRestante -= montoAAplicar;
+      }
+    });
+
+    res.json({ message: 'Abono global registrado exitosamente' });
+  } catch (error) {
+    console.error('Error al registrar abono global Firebase:', error);
+    res.status(500).json({ message: error.message || 'Error al registrar abono global' });
   }
 };
 

@@ -9,6 +9,8 @@ export default function Cobros() {
   const [clientes, setClientes] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [nuevaCuenta, setNuevaCuenta] = useState({ cliente_id: '', monto: '', concepto: '' });
+  const [showModalAbonoGlobal, setShowModalAbonoGlobal] = useState(false);
+  const [abonoGlobal, setAbonoGlobal] = useState({ cliente_id: '', nombre: '', monto: '' });
 
   useEffect(() => {
     cargarCuentas();
@@ -98,6 +100,28 @@ export default function Cobros() {
     }
   };
 
+  const registrarAbonoGlobal = async (e) => {
+    e.preventDefault();
+    if (!abonoGlobal.monto || Number(abonoGlobal.monto) <= 0) {
+      alert("Por favor ingresa un monto válido mayor a 0.");
+      return;
+    }
+    try {
+      await api.post('/cobros/abono-global', {
+        cliente_id: abonoGlobal.cliente_id,
+        monto: Number(abonoGlobal.monto),
+        metodo_pago: 'TRANSFERENCIA'
+      });
+      alert(`Abono global de $${Number(abonoGlobal.monto).toFixed(2)} registrado con éxito.`);
+      setShowModalAbonoGlobal(false);
+      setAbonoGlobal({ cliente_id: '', nombre: '', monto: '' });
+      cargarCuentas();
+    } catch (error) {
+      console.error('Error registrando abono global:', error);
+      alert('Hubo un error al registrar el abono global.');
+    }
+  };
+
   const filtradas = cuentas.filter(c => 
     (c.cliente_nombre && c.cliente_nombre.toLowerCase().includes(busqueda.toLowerCase())) || 
     (c.numero_referencia && c.numero_referencia.includes(busqueda))
@@ -155,7 +179,10 @@ export default function Cobros() {
                   <h2 style={{ fontSize: '1.4rem', color: 'var(--text-primary)' }}>{grupo.nombre}</h2>
                   <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{grupo.cuentas.length} facturas pendientes</p>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', textAlign: 'right', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', textAlign: 'right', flexWrap: 'wrap' }}>
+                  <button className="btn btn-secondary" style={{ padding: '0.6rem 1rem', borderColor: 'var(--success)', color: 'var(--success)' }} onClick={() => { setAbonoGlobal({ cliente_id: grupo.cuentas[0].cliente_id, nombre: grupo.nombre, monto: '' }); setShowModalAbonoGlobal(true); }} title="Abonar a la deuda total">
+                    <DollarSign size={18} /> Abono Global
+                  </button>
                   <button className="btn" style={{ backgroundColor: '#25D366', color: 'white', padding: '0.6rem 1rem' }} onClick={() => enviarWhatsAppGrupo(grupo)} title="Enviar resumen por WhatsApp">
                     <Send size={18} /> Enviar Resumen
                   </button>
@@ -264,6 +291,39 @@ export default function Cobros() {
 
               <button type="submit" className="btn btn-primary w-full" style={{ padding: '0.8rem', fontSize: '1.05rem' }}>
                 Crear y Sumar a la Deuda
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Abono Global */}
+      {showModalAbonoGlobal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div className="glass-panel animate-fade-in" style={{ width: '100%', maxWidth: '400px', padding: '2rem', position: 'relative', borderTop: '4px solid var(--success)' }}>
+            <button onClick={() => setShowModalAbonoGlobal(false)} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}>
+              <X size={24} />
+            </button>
+            <h2 style={{ marginBottom: '0.5rem', fontSize: '1.5rem', fontFamily: "'Outfit', sans-serif" }}>Abono Global</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Abono a la deuda total de <strong>{abonoGlobal.nombre}</strong></p>
+            
+            <form onSubmit={registrarAbonoGlobal}>
+              <div className="input-group" style={{ marginBottom: '2rem' }}>
+                <label>Monto a Abonar ($) *</label>
+                <input 
+                  type="number" 
+                  className="input-field" 
+                  value={abonoGlobal.monto} 
+                  onChange={e => setAbonoGlobal({...abonoGlobal, monto: e.target.value})}
+                  min="1"
+                  step="0.01"
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <button type="submit" className="btn btn-primary w-full" style={{ padding: '0.8rem', fontSize: '1.05rem', backgroundColor: 'var(--success)' }}>
+                <CheckCircle size={18} /> Registrar Abono Total
               </button>
             </form>
           </div>
