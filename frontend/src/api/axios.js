@@ -3,7 +3,7 @@ import axios from 'axios';
 const api = axios.create({
   baseURL: import.meta.env.DEV 
     ? 'http://localhost:5000/api' 
-    : '/api',
+    : 'https://app-inventario-version.vercel.app/api',
 });
 
 // Interceptor para inyectar automáticamente el token en todas las peticiones
