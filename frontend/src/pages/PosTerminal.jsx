@@ -34,15 +34,20 @@ export default function PosTerminal() {
   }, []);
 
   const cargarDatosBasicos = async () => {
+    // Cargar Productos
     try {
-      const [resProd, resCli] = await Promise.all([
-        api.get('/inventario/productos'),
-        api.get('/clientes')
-      ]);
+      const resProd = await api.get('/inventario/productos');
       setProductos(resProd.data.filter(p => p.estado === 'ACTIVO'));
-      setClientesBase(resCli.data);
     } catch (error) {
-      console.error('Error cargando datos para POS:', error);
+      console.error('Error cargando productos para POS:', error);
+    }
+
+    // Cargar Clientes
+    try {
+      const resCli = await api.get('/clientes');
+      setClientesBase(resCli.data || []);
+    } catch (error) {
+      console.error('Error cargando clientes para POS:', error);
     }
   };
 
