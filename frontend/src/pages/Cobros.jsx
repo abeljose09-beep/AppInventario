@@ -24,10 +24,20 @@ export default function Cobros() {
     setAbonosInput(prev => ({ ...prev, [id]: valor }));
   };
 
-  const enviarWhatsApp = (cuenta) => {
-    const mensaje = `Hola ${cuenta.cliente_nombre},%0A%0ATe saludamos de InvSys.%0AQueremos recordarte que tienes un saldo pendiente en tu cuenta de cobro N° *${cuenta.numero_referencia}*.%0A%0A*Resumen de la cuenta:*%0ATotal de la compra: $${cuenta.total.toFixed(2)}%0AValor abonado: $${cuenta.total_pagado.toFixed(2)}%0A*Saldo a pagar: $${cuenta.saldo_pendiente.toFixed(2)}*%0A%0APuedes realizar el pago mediante transferencia bancaria. ¡Quedamos atentos a cualquier duda!`;
-    let numero = cuenta.cliente_telefono || '';
+  const enviarWhatsAppGrupo = (grupo) => {
+    const cuentaConTelefono = grupo.cuentas.find(c => c.cliente_telefono);
+    let numero = cuentaConTelefono ? cuentaConTelefono.cliente_telefono : '';
+    
     if (numero && !numero.startsWith('+') && numero.length === 10) numero = '57' + numero; 
+    
+    let mensaje = `Hola ${grupo.nombre},%0A%0ATe saludamos de InvSys.%0AQueremos recordarte que tienes *${grupo.cuentas.length} factura(s) pendiente(s)* con nosotros, sumando una deuda total de *$${grupo.totalDeuda.toFixed(2)}*.%0A%0A*Detalle de cuenta:*%0A`;
+    
+    grupo.cuentas.forEach(cuenta => {
+        mensaje += `- Ref: ${cuenta.numero_referencia} | Saldo: $${cuenta.saldo_pendiente.toFixed(2)}%0A`;
+    });
+    
+    mensaje += `%0APuedes realizar el pago mediante transferencia bancaria. ¡Quedamos atentos a cualquier duda!`;
+    
     const url = `https://wa.me/${numero.replace('+', '')}?text=${mensaje}`;
     window.open(url, '_blank');
   };
@@ -109,11 +119,16 @@ export default function Cobros() {
                   <h2 style={{ fontSize: '1.4rem', color: 'var(--text-primary)' }}>{grupo.nombre}</h2>
                   <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{grupo.cuentas.length} facturas pendientes</p>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Deuda Total</p>
-                  <p style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'var(--danger)' }}>
-                    ${grupo.totalDeuda.toFixed(2)}
-                  </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', textAlign: 'right', flexWrap: 'wrap' }}>
+                  <button className="btn" style={{ backgroundColor: '#25D366', color: 'white', padding: '0.6rem 1rem' }} onClick={() => enviarWhatsAppGrupo(grupo)} title="Enviar resumen por WhatsApp">
+                    <Send size={18} /> Enviar Resumen
+                  </button>
+                  <div>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Deuda Total</p>
+                    <p style={{ fontSize: '1.8rem', fontWeight: 'bold', color: 'var(--danger)' }}>
+                      ${grupo.totalDeuda.toFixed(2)}
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -145,9 +160,6 @@ export default function Cobros() {
                       />
                       <button className="btn btn-secondary" onClick={() => registrarAbono(cuenta.id, cuenta.saldo_pendiente)} style={{ padding: '0.4rem 0.8rem' }} title="Registrar abono">
                         <CheckCircle size={16} color="var(--success)" />
-                      </button>
-                      <button className="btn" style={{ backgroundColor: '#25D366', color: 'white', padding: '0.4rem 0.8rem' }} onClick={() => enviarWhatsApp(cuenta)} title="Enviar a WhatsApp">
-                        <Send size={16} />
                       </button>
                     </div>
                   </div>
