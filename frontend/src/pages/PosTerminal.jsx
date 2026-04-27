@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Search, Plus, Minus, Trash2, ShoppingCart, CreditCard, User, Package } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Search, Plus, Minus, Trash2, ShoppingCart, CreditCard, User, Package, Printer, Barcode } from 'lucide-react';
 import api from '../api/axios';
 
 const getGradient = (id) => {
@@ -18,12 +18,16 @@ export default function PosTerminal() {
   const [clientesBase, setClientesBase] = useState([]);
   const [carrito, setCarrito] = useState([]);
   const [busquedaProd, setBusquedaProd] = useState('');
-  
   const [busquedaCliente, setBusquedaCliente] = useState('');
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
   const [mostrarResultadosCliente, setMostrarResultadosCliente] = useState(false);
   const [tipoPago, setTipoPago] = useState('CONTADO');
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [ultimaVenta, setUltimaVenta] = useState(null);
+  const [showTicket, setShowTicket] = useState(false);
+  const barcodeBuffer = useRef('');
+  const barcodeTimer = useRef(null);
+  const barcodeInputRef = useRef(null);
 
   useEffect(() => {
     cargarDatosBasicos();
@@ -89,12 +93,110 @@ export default function PosTerminal() {
   const impuestos = 0; // Sin impuestos
   const total = subtotal;
 
+  // ─── ESCÁNER DE CÓDIGO DE BARRAS ────────────────────────────────────────────
+  const handleBarcodeInput = useCallback((e) => {
+    const char = e.key;
+    if (char === 'Enter') {
+      const codigo = barcodeBuffer.current.trim();
+      barcodeBuffer.current = '';
+      clearTimeout(barcodeTimer.current);
+      if (codigo.length > 3) {
+        const prod = productos.find(p => p.codigo_barras === codigo);
+        if (prod) {
+          agregarAlCarrito(prod);
+          setBusquedaProd('');
+        } else {
+          setBusquedaProd(codigo);
+        }
+      }
+    } else if (char && char.length === 1) {
+      barcodeBuffer.current += char;
+      clearTimeout(barcodeTimer.current);
+      barcodeTimer.current = setTimeout(() => { barcodeBuffer.current = ''; }, 100);
+    }
+  }, [productos]);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleBarcodeInput);
+    return () => window.removeEventListener('keydown', handleBarcodeInput);
+  }, [handleBarcodeInput]);
+
+  // ─── TICKET / RECIBO ─────────────────────────────────────────────────────────
+  const imprimirTicket = (ventaData) => {
+    const win = window.open('', '_blank', 'width=400,height=700');
+    const fecha = new Date().toLocaleString('es-CO');
+    const itemsHTML = ventaData.carrito.map(item => `
+      <tr>
+        <td>${item.nombre}</td>
+        <td style="text-align:center">${item.cantidad}</td>
+        <td style="text-align:right">$${item.precio_venta.toFixed(2)}</td>
+        <td style="text-align:right">$${(item.precio_venta * item.cantidad).toFixed(2)}</td>
+      </tr>
+    `).join('');
+
+    win.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Recibo #${ventaData.referencia}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Courier New', monospace; font-size: 12px; padding: 10px; max-width: 350px; margin: auto; color: #000; }
+          .center { text-align: center; }
+          .logo { font-size: 22px; font-weight: bold; margin: 8px 0; }
+          .divider { border-top: 1px dashed #000; margin: 8px 0; }
+          table { width: 100%; border-collapse: collapse; }
+          th { text-align: left; font-size: 10px; padding-bottom: 4px; }
+          td { padding: 2px 0; vertical-align: top; }
+          .total-row { font-weight: bold; font-size: 14px; border-top: 1px solid #000; padding-top: 4px; margin-top: 4px; }
+          .footer { text-align: center; margin-top: 12px; font-size: 10px; }
+          @media print { body { padding: 0; } }
+        </style>
+      </head>
+      <body>
+        <div class="center">
+          <div class="logo">InvSys</div>
+          <div>Sistema de Inventario</div>
+          <div class="divider"></div>
+          <div>RECIBO DE VENTA</div>
+          <div style="font-size:10px">Ref: ${ventaData.referencia}</div>
+          <div style="font-size:10px">${fecha}</div>
+        </div>
+        <div class="divider"></div>
+        <div><strong>Cliente:</strong> ${ventaData.cliente}</div>
+        <div><strong>Pago:</strong> ${ventaData.tipoPago}</div>
+        <div class="divider"></div>
+        <table>
+          <thead>
+            <tr>
+              <th>Producto</th><th style="text-align:center">Cant</th>
+              <th style="text-align:right">P.Unit</th><th style="text-align:right">Total</th>
+            </tr>
+          </thead>
+          <tbody>${itemsHTML}</tbody>
+        </table>
+        <div class="divider"></div>
+        <table><tr class="total-row">
+          <td colspan="3">TOTAL</td>
+          <td style="text-align:right">$${ventaData.total.toFixed(2)}</td>
+        </tr></table>
+        <div class="divider"></div>
+        <div class="footer">
+          <div>¡Gracias por su compra!</div>
+          <div>Conserve este recibo</div>
+        </div>
+        <script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); }<\/script>
+      </body></html>
+    `);
+    win.document.close();
+  };
+
   const procesarVenta = async () => {
     if (!clienteSeleccionado) {
-      alert("Por favor selecciona un cliente para registrar la venta.");
+      alert('Por favor selecciona un cliente para registrar la venta.');
       return;
     }
-    
     try {
       const payload = {
         cliente_id: clienteSeleccionado.id,
@@ -106,14 +208,22 @@ export default function PosTerminal() {
         subtotal, impuestos, descuento: 0, total, tipo_pago: tipoPago
       };
       
-      await api.post('/ventas', payload);
-      alert(`Venta procesada con éxito a nombre de ${clienteSeleccionado.nombre_completo} por $${total.toFixed(2)}`);
-      
+      const res = await api.post('/ventas', payload);
+      const ventaData = {
+        referencia: res.data.compra?.numero_referencia || `VTA-${Date.now()}`,
+        cliente: clienteSeleccionado.nombre_completo,
+        tipoPago,
+        carrito: [...carrito],
+        total
+      };
+
+      setUltimaVenta(ventaData);
+      setShowTicket(true);
       setCarrito([]);
       setClienteSeleccionado(null);
       setBusquedaCliente('');
       setIsCartOpen(false);
-      cargarDatosBasicos(); // Recargar stock real
+      cargarDatosBasicos();
     } catch (error) {
       console.error('Error procesando venta:', error);
       alert(error.response?.data?.message || 'Error al procesar la venta');
@@ -387,5 +497,41 @@ export default function PosTerminal() {
         </div>
       </div>
     </div>
+
+    {/* ─── MODAL TICKET DE VENTA ─────────────────────────────────────────── */}
+    {showTicket && ultimaVenta && (
+      <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+        <div className="glass-panel animate-fade-in" style={{ width: '100%', maxWidth: '420px', padding: '2rem', textAlign: 'center', borderTop: '4px solid var(--success)' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>✅</div>
+          <h2 style={{ fontSize: '1.5rem', marginBottom: '0.25rem', color: 'var(--success)' }}>¡Venta Exitosa!</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Ref: <strong>{ultimaVenta.referencia}</strong></p>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>Cliente: <strong>{ultimaVenta.cliente}</strong></p>
+          
+          <div style={{ padding: '1rem', backgroundColor: 'rgba(16,185,129,0.1)', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem' }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Total cobrado</p>
+            <p style={{ fontSize: '2.2rem', fontWeight: 'bold', color: 'var(--success)' }}>${ultimaVenta.total.toFixed(2)}</p>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>{ultimaVenta.tipoPago}</p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <button
+              className="btn btn-primary w-full"
+              style={{ padding: '0.8rem', backgroundColor: '#1a1a2e', border: '2px solid var(--accent-primary)' }}
+              onClick={() => imprimirTicket(ultimaVenta)}
+            >
+              <Printer size={18} /> Imprimir Ticket / PDF
+            </button>
+            <button
+              className="btn btn-secondary w-full"
+              style={{ padding: '0.8rem' }}
+              onClick={() => setShowTicket(false)}
+            >
+              Cerrar y continuar
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   );
 }
+

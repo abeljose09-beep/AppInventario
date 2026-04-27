@@ -18,45 +18,47 @@ router.get('/stats', async (req, res) => {
       .where('empresa_id', '==', empresa_id)
       .get();
 
+    // Mapa de precio_costo por producto
+    const productosMap = {};
+    const productosSnap2 = await db.collection('productos').where('empresa_id', '==', empresa_id).get();
+    productosSnap2.forEach(d => { productosMap[d.id] = Number(d.data().precio_costo) || 0; });
+
     let totalVentasHoy = 0;
+    let costoVentasHoy = 0;
     let totalPendiente = 0;
     
-    // 5. Datos para el gráfico (Últimos 7 días)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
     sevenDaysAgo.setHours(0,0,0,0);
     const sevenDaysAgoISO = sevenDaysAgo.toISOString();
-
     const last7Days = [];
-    const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const dayNames = ['Dom', 'Lun', 'Mar', 'Mi\u00e9', 'Jue', 'Vie', 'S\u00e1b'];
     for(let i=6; i>=0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      last7Days.push({ 
-        date: d.toISOString().split('T')[0], 
-        name: dayNames[d.getDay()], 
-        ventas: 0 
-      });
+      last7Days.push({ date: d.toISOString().split('T')[0], name: dayNames[d.getDay()], ventas: 0 });
     }
 
     for (const doc of allComprasSnapshot.docs) {
       const data = doc.data();
       
-      // Ventas de Hoy
       if (data.fecha_compra >= todayISO) {
         totalVentasHoy += Number(data.total) || 0;
+        // Calcular costo de las ventas de hoy usando los detalles
+        const detallesSnap = await doc.ref.collection('detalles').get();
+        detallesSnap.forEach(d => {
+          const det = d.data();
+          const costo = productosMap[det.producto_id] || 0;
+          costoVentasHoy += costo * Number(det.cantidad);
+        });
       }
 
-      // Gráfico de 7 días
       if (data.fecha_compra >= sevenDaysAgoISO) {
         const dateStr = data.fecha_compra.split('T')[0];
         const dayIndex = last7Days.findIndex(d => d.date === dateStr);
-        if (dayIndex !== -1) {
-          last7Days[dayIndex].ventas += Number(data.total) || 0;
-        }
+        if (dayIndex !== -1) last7Days[dayIndex].ventas += Number(data.total) || 0;
       }
 
-      // Cuentas por Cobrar
       if (data.estado === 'PENDIENTE' || data.estado === 'ABONADA') {
         const pagosSnap = await doc.ref.collection('pagos').get();
         let pagado = 0;
@@ -78,11 +80,25 @@ router.get('/stats', async (req, res) => {
       .get();
     const totalClientes = clientesSnapshot.size;
     
+    // Gastos del mes actual
+    const primerDiaMes = new Date();
+    primerDiaMes.setDate(1);
+    primerDiaMes.setHours(0,0,0,0);
+    const primerDiaMesISO = primerDiaMes.toISOString();
+    const gastosSnap = await db.collection('gastos').where('empresa_id', '==', empresa_id).get();
+    let gastosMes = 0;
+    gastosSnap.forEach(d => {
+      if (d.data().fecha >= primerDiaMesISO) gastosMes += Number(d.data().monto) || 0;
+    });
+    
     res.json({
       ventasHoy: totalVentasHoy,
+      costoVentasHoy,
+      gananciaBrutaHoy: totalVentasHoy - costoVentasHoy,
       cuentasCobrar: totalPendiente,
       productosActivos: totalProductos,
       totalClientes: totalClientes,
+      gastosMes,
       chartData: last7Days
     });
   } catch (error) {
