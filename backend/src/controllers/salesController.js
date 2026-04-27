@@ -97,10 +97,9 @@ exports.crearVenta = async (req, res) => {
 exports.obtenerVentas = async (req, res) => {
   try {
     const { empresa_id } = req.usuario;
-    // Traer ventas ordenadas por fecha descendente
+    // Traer ventas ordenadas por fecha descendente (sin index compuesto de Firebase)
     const snapshot = await db.collection('compras')
       .where('empresa_id', '==', empresa_id)
-      .orderBy('fecha_compra', 'desc')
       .get();
     
     const ventas = [];
@@ -112,6 +111,9 @@ exports.obtenerVentas = async (req, res) => {
       
       ventas.push({ id: doc.id, ...data, detalles });
     }
+    
+    // Sort en memoria de más reciente a más antigua
+    ventas.sort((a, b) => new Date(b.fecha_compra) - new Date(a.fecha_compra));
     
     res.json(ventas);
   } catch (error) {

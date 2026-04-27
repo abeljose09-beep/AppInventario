@@ -13,29 +13,56 @@ router.get('/stats', async (req, res) => {
     today.setHours(0, 0, 0, 0);
     const todayISO = today.toISOString();
 
-    // 1. Ventas de Hoy
-    const ventasSnapshot = await db.collection('compras')
+    // Traer todas las compras de la empresa
+    const allComprasSnapshot = await db.collection('compras')
       .where('empresa_id', '==', empresa_id)
-      .where('fecha_compra', '>=', todayISO)
       .get();
-    
-    let totalVentasHoy = 0;
-    ventasSnapshot.forEach(doc => {
-      totalVentasHoy += Number(doc.data().total) || 0;
-    });
 
-    // 2. Cuentas por Cobrar (Saldo Pendiente Total)
-    const cobrosSnapshot = await db.collection('compras')
-      .where('empresa_id', '==', empresa_id)
-      .where('estado', 'in', ['PENDIENTE', 'ABONADA'])
-      .get();
-    
+    let totalVentasHoy = 0;
     let totalPendiente = 0;
-    for (const doc of cobrosSnapshot.docs) {
-       const pagosSnap = await doc.ref.collection('pagos').get();
-       let pagado = 0;
-       pagosSnap.forEach(p => pagado += Number(p.data().monto));
-       totalPendiente += (Number(doc.data().total) - pagado);
+    
+    // 5. Datos para el gráfico (Últimos 7 días)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+    sevenDaysAgo.setHours(0,0,0,0);
+    const sevenDaysAgoISO = sevenDaysAgo.toISOString();
+
+    const last7Days = [];
+    const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    for(let i=6; i>=0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      last7Days.push({ 
+        date: d.toISOString().split('T')[0], 
+        name: dayNames[d.getDay()], 
+        ventas: 0 
+      });
+    }
+
+    for (const doc of allComprasSnapshot.docs) {
+      const data = doc.data();
+      
+      // Ventas de Hoy
+      if (data.fecha_compra >= todayISO) {
+        totalVentasHoy += Number(data.total) || 0;
+      }
+
+      // Gráfico de 7 días
+      if (data.fecha_compra >= sevenDaysAgoISO) {
+        const dateStr = data.fecha_compra.split('T')[0];
+        const dayIndex = last7Days.findIndex(d => d.date === dateStr);
+        if (dayIndex !== -1) {
+          last7Days[dayIndex].ventas += Number(data.total) || 0;
+        }
+      }
+
+      // Cuentas por Cobrar
+      if (data.estado === 'PENDIENTE' || data.estado === 'ABONADA') {
+        const pagosSnap = await doc.ref.collection('pagos').get();
+        let pagado = 0;
+        pagosSnap.forEach(p => pagado += Number(p.data().monto));
+        totalPendiente += (Number(data.total) - pagado);
+      }
     }
 
     // 3. Productos Activos
@@ -50,40 +77,7 @@ router.get('/stats', async (req, res) => {
       .where('empresa_id', '==', empresa_id)
       .get();
     const totalClientes = clientesSnapshot.size;
-
-    // 5. Datos para el gráfico (Últimos 7 días)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-    sevenDaysAgo.setHours(0,0,0,0);
-    const sevenDaysAgoISO = sevenDaysAgo.toISOString();
-
-    const chartSnapshot = await db.collection('compras')
-      .where('empresa_id', '==', empresa_id)
-      .where('fecha_compra', '>=', sevenDaysAgoISO)
-      .get();
     
-    // Inicializar array de 7 días
-    const last7Days = [];
-    const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-    for(let i=6; i>=0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      last7Days.push({ 
-        date: d.toISOString().split('T')[0], 
-        name: dayNames[d.getDay()], 
-        ventas: 0 
-      });
-    }
-
-    chartSnapshot.forEach(doc => {
-      const data = doc.data();
-      const dateStr = data.fecha_compra.split('T')[0];
-      const dayIndex = last7Days.findIndex(d => d.date === dateStr);
-      if (dayIndex !== -1) {
-        last7Days[dayIndex].ventas += Number(data.total);
-      }
-    });
-
     res.json({
       ventasHoy: totalVentasHoy,
       cuentasCobrar: totalPendiente,
