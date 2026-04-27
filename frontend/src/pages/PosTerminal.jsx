@@ -1,6 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, Minus, Trash2, ShoppingCart, CreditCard, User } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, ShoppingCart, CreditCard, User, Package } from 'lucide-react';
 import api from '../api/axios';
+
+const getGradient = (id) => {
+  const gradients = [
+    'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+    'linear-gradient(135deg, #3b82f6 0%, #2dd4bf 100%)',
+    'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)',
+    'linear-gradient(135deg, #10b981 0%, #3b82f6 100%)',
+    'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)',
+  ];
+  return gradients[id % gradients.length];
+};
 
 export default function PosTerminal() {
   const [productos, setProductos] = useState([]);
@@ -138,16 +149,35 @@ export default function PosTerminal() {
             <div 
               key={prod.id} 
               className="glass-panel" 
-              style={{ padding: '1rem', cursor: 'pointer', transition: 'all 0.2s' }}
+              style={{ 
+                padding: '1.25rem', cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s',
+                display: 'flex', flexDirection: 'column', gap: '0.75rem', position: 'relative', overflow: 'hidden'
+              }}
               onClick={() => agregarAlCarrito(prod)}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--glass-shadow)'; }}
             >
-              <div style={{ height: '80px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 'var(--radius-md)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: '2rem' }}>📦</span>
+              <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', background: getGradient(prod.id) }}></div>
+              <div style={{ height: '90px', background: 'rgba(255,255,255,0.03)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '-0.25rem -0.25rem 0' }}>
+                <Package size={40} color="var(--accent-primary)" style={{ opacity: 0.8 }} />
               </div>
-              <h4 style={{ fontSize: '0.95rem', marginBottom: '0.25rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{prod.nombre}</h4>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: 'var(--accent-primary)', fontWeight: 'bold' }}>${prod.precio_venta?.toFixed(2)}</span>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Stock: {prod.stock_actual}</span>
+              <div>
+                <h4 style={{ fontSize: '1.05rem', fontWeight: '600', marginBottom: '0.25rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-primary)' }} title={prod.nombre}>
+                  {prod.nombre}
+                </h4>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '0.5rem' }}>
+                  <span style={{ color: 'var(--success)', fontWeight: '700', fontSize: '1.15rem' }}>
+                    ${prod.precio_venta?.toFixed(2)}
+                  </span>
+                  <span style={{ 
+                    fontSize: '0.75rem', fontWeight: '600', 
+                    padding: '0.2rem 0.6rem', borderRadius: '1rem', 
+                    backgroundColor: prod.stock_actual > 10 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                    color: prod.stock_actual > 10 ? 'var(--success)' : 'var(--warning)'
+                  }}>
+                    Stock: {prod.stock_actual}
+                  </span>
+                </div>
               </div>
             </div>
           ))}
@@ -246,17 +276,21 @@ export default function PosTerminal() {
             </div>
           ) : (
             carrito.map(item => (
-              <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 'var(--radius-sm)' }}>
+              <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 'var(--radius-md)', borderLeft: `3px solid transparent`, backgroundImage: `linear-gradient(rgba(26, 29, 36, 1), rgba(26, 29, 36, 1)), ${getGradient(item.id)}`, backgroundOrigin: 'border-box', backgroundClip: 'padding-box, border-box' }}>
                 <div style={{ flex: 1 }}>
-                  <h5 style={{ fontSize: '0.9rem', marginBottom: '0.2rem' }}>{item.nombre}</h5>
-                  <span style={{ color: 'var(--accent-primary)', fontWeight: '600', fontSize: '0.85rem' }}>${item.precio_venta?.toFixed(2)}</span>
+                  <h5 style={{ fontSize: '0.95rem', marginBottom: '0.2rem', fontWeight: '600' }}>{item.nombre}</h5>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>${item.precio_venta?.toFixed(2)} x {item.cantidad}</span>
                 </div>
                 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <button onClick={() => modificarCantidad(item.id, -1)} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', padding: '0.2rem' }}><Minus size={16} /></button>
-                  <span style={{ width: '20px', textAlign: 'center', fontSize: '0.9rem' }}>{item.cantidad}</span>
-                  <button onClick={() => modificarCantidad(item.id, 1)} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', padding: '0.2rem' }}><Plus size={16} /></button>
-                  <button onClick={() => eliminarDelCarrito(item.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', marginLeft: '0.5rem', padding: '0.2rem' }}><Trash2 size={16} /></button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'rgba(0,0,0,0.2)', padding: '0.25rem', borderRadius: 'var(--radius-full)' }}>
+                  <button onClick={() => modificarCantidad(item.id, -1)} style={{ background: 'var(--bg-tertiary)', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', padding: '0.4rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'} onMouseLeave={(e) => e.currentTarget.style.background = 'var(--bg-tertiary)'}><Minus size={14} /></button>
+                  <span style={{ width: '24px', textAlign: 'center', fontSize: '0.95rem', fontWeight: '600' }}>{item.cantidad}</span>
+                  <button onClick={() => modificarCantidad(item.id, 1)} style={{ background: 'var(--bg-tertiary)', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', padding: '0.4rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'} onMouseLeave={(e) => e.currentTarget.style.background = 'var(--bg-tertiary)'}><Plus size={14} /></button>
+                </div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginLeft: '1rem', minWidth: '70px' }}>
+                  <span style={{ fontWeight: '700', color: 'var(--accent-primary)', fontSize: '1.05rem' }}>${(item.precio_venta * item.cantidad).toFixed(2)}</span>
+                  <button onClick={() => eliminarDelCarrito(item.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', marginTop: '0.35rem', padding: '0.2rem', opacity: 0.7, transition: 'opacity 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.opacity = 1} onMouseLeave={(e) => e.currentTarget.style.opacity = 0.7} title="Eliminar"><Trash2 size={16} /></button>
                 </div>
               </div>
             ))
@@ -275,9 +309,9 @@ export default function PosTerminal() {
              </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', fontSize: '1.5rem', fontWeight: 'bold' }}>
-            <span>Total a Pagar</span>
-            <span style={{ color: 'var(--accent-primary)' }}>${total.toFixed(2)}</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', padding: '1.25rem', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(99, 102, 241, 0.2)', alignItems: 'center' }}>
+            <span style={{ fontSize: '1.1rem', fontWeight: '600', color: 'var(--text-primary)' }}>Total a Pagar</span>
+            <span style={{ fontSize: '1.75rem', fontWeight: '800', color: 'var(--accent-primary)', textShadow: '0 2px 10px var(--accent-glow)' }}>${total.toFixed(2)}</span>
           </div>
 
           <button 
