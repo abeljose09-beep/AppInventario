@@ -8,81 +8,67 @@ exports.crearVenta = async (req, res) => {
     const numero_referencia = `VTA-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     const estado_compra = tipo_pago === 'CONTADO' ? 'PAGADA' : 'PENDIENTE';
     const fecha_compra = new Date().toISOString();
-
     const compraRef = db.collection('compras').doc();
 
     await db.runTransaction(async (transaction) => {
-      // 0. Obtener nombre del cliente
+      // ─── 1. TODAS LAS LECTURAS PRIMERO ────────────────────────────────────
       const clienteRef = db.collection('clientes').doc(cliente_id);
       const clienteDoc = await transaction.get(clienteRef);
-      if (!clienteDoc.exists) throw new Error("Cliente no encontrado");
-      const cliente_nombre = clienteDoc.data().nombre_completo;
+      if (!clienteDoc.exists) throw new Error('Cliente no encontrado');
 
-      // Validar stock primero
-      const productDocs = [];
-      for (const item of productos) {
-        const prodRef = db.collection('productos').doc(item.producto_id);
-        const prodDoc = await transaction.get(prodRef);
+      const prodRefs = productos.map(item => db.collection('productos').doc(item.producto_id));
+      const prodDocs = await Promise.all(prodRefs.map(ref => transaction.get(ref)));
+
+      // Validar existencia y stock
+      for (let i = 0; i < productos.length; i++) {
+        const prodDoc = prodDocs[i];
+        const item = productos[i];
         if (!prodDoc.exists) throw new Error(`Producto ${item.producto_id} no encontrado`);
-        
-        const currentStock = prodDoc.data().stock_actual;
-        if (currentStock < item.cantidad) {
-          throw new Error(`Stock insuficiente para el producto: ${prodDoc.data().nombre}`);
+        if (prodDoc.data().stock_actual < item.cantidad) {
+          throw new Error(`Stock insuficiente para: ${prodDoc.data().nombre}`);
         }
-        productDocs.push({ ref: prodRef, doc: prodDoc, item });
       }
 
-      // 1. Guardar la compra
-      const nuevaCompra = {
+      // ─── 2. TODAS LAS ESCRITURAS DESPUÉS ──────────────────────────────────
+      const cliente_nombre = clienteDoc.data().nombre_completo;
+
+      transaction.set(compraRef, {
         empresa_id, cliente_id, cliente_nombre, usuario_id, numero_referencia,
-        subtotal, impuestos, descuento, total, tipo_pago, estado: estado_compra,
-        fecha_compra
-      };
-      transaction.set(compraRef, nuevaCompra);
+        subtotal, impuestos, descuento, total, tipo_pago,
+        estado: estado_compra, fecha_compra
+      });
 
-      // 2. Procesar productos y stock
-      const detallesList = [];
-      for (const { ref, doc, item } of productDocs) {
+      for (let i = 0; i < productos.length; i++) {
+        const item = productos[i];
+        const prodDoc = prodDocs[i];
+        const prodRef = prodRefs[i];
         const itemSubtotal = item.cantidad * item.precio_unitario;
-        const currentStock = doc.data().stock_actual;
+        const currentStock = prodDoc.data().stock_actual;
 
-        // Descontar inventario
-        transaction.update(ref, { stock_actual: currentStock - item.cantidad });
+        transaction.update(prodRef, { stock_actual: currentStock - item.cantidad });
 
-        // Guardar detalle compra
         const detalleRef = compraRef.collection('detalles').doc();
-        const detalleData = {
+        transaction.set(detalleRef, {
           producto_id: item.producto_id,
           cantidad: item.cantidad,
           precio_unitario: item.precio_unitario,
           subtotal: itemSubtotal,
-          nombre: doc.data().nombre
-        };
-        transaction.set(detalleRef, detalleData);
-        detallesList.push(detalleData);
+          nombre: prodDoc.data().nombre
+        });
 
-        // Registrar movimiento
         const movRef = db.collection('movimientos_inventario').doc();
         transaction.set(movRef, {
-          empresa_id,
-          producto_id: item.producto_id,
-          usuario_id,
-          tipo_movimiento: 'SALIDA',
-          cantidad: item.cantidad,
-          motivo: `Venta Ref: ${numero_referencia}`,
-          fecha_hora: fecha_compra
+          empresa_id, producto_id: item.producto_id, usuario_id,
+          tipo_movimiento: 'SALIDA', cantidad: item.cantidad,
+          motivo: `Venta Ref: ${numero_referencia}`, fecha_hora: fecha_compra
         });
       }
 
-      // 3. Pago contado
       if (tipo_pago === 'CONTADO') {
         const pagoRef = compraRef.collection('pagos').doc();
         transaction.set(pagoRef, {
-          empresa_id,
-          usuario_id,
-          monto: total,
-          metodo_pago: 'EFECTIVO',
-          fecha_pago: fecha_compra
+          empresa_id, usuario_id, monto: total,
+          metodo_pago: 'EFECTIVO', fecha_pago: fecha_compra
         });
       }
     });
@@ -97,7 +83,6 @@ exports.crearVenta = async (req, res) => {
 exports.obtenerVentas = async (req, res) => {
   try {
     const { empresa_id } = req.usuario;
-    // Traer ventas ordenadas por fecha descendente (sin index compuesto de Firebase)
     const snapshot = await db.collection('compras')
       .where('empresa_id', '==', empresa_id)
       .get();
@@ -105,16 +90,12 @@ exports.obtenerVentas = async (req, res) => {
     const ventas = [];
     for (const doc of snapshot.docs) {
       const data = doc.data();
-      // Traer detalles (subcoleccion)
       const detallesSnapshot = await doc.ref.collection('detalles').get();
       const detalles = detallesSnapshot.docs.map(d => d.data());
-      
       ventas.push({ id: doc.id, ...data, detalles });
     }
     
-    // Sort en memoria de más reciente a más antigua
     ventas.sort((a, b) => new Date(b.fecha_compra) - new Date(a.fecha_compra));
-    
     res.json(ventas);
   } catch (error) {
     console.error('Error al obtener ventas:', error);

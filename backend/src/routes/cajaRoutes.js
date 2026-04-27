@@ -57,13 +57,17 @@ router.post('/cerrar', async (req, res) => {
     const turnoRef = snap.docs[0].ref;
     const turnoData = snap.docs[0].data();
 
-    // Calcular ventas del turno
+    // Traer todas las compras de la empresa y filtrar en memoria (evita índice compuesto)
     const ventasSnap = await db.collection('compras')
       .where('empresa_id', '==', empresa_id)
-      .where('fecha_compra', '>=', turnoData.fecha_apertura)
       .get();
     let totalVentas = 0;
-    ventasSnap.forEach(d => { totalVentas += Number(d.data().total) || 0; });
+    ventasSnap.forEach(d => {
+      const data = d.data();
+      if (data.fecha_compra >= turnoData.fecha_apertura) {
+        totalVentas += Number(data.total) || 0;
+      }
+    });
 
     const esperado = (turnoData.monto_inicial || 0) + totalVentas;
     const diferencia = Number(monto_declarado) - esperado;

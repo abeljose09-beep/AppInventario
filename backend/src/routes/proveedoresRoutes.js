@@ -64,7 +64,13 @@ router.post('/ordenes', verificarRol(['SUPERUSUARIO', 'ADMINISTRADOR']), async (
       return res.status(400).json({ message: 'Datos incompletos' });
 
     const numero = `OC-${Date.now()}`;
-    const ref = await db.runTransaction(async (tx) => {
+
+    await db.runTransaction(async (tx) => {
+      // ─── 1. TODAS LAS LECTURAS PRIMERO ──────────────────────────────
+      const prodRefs = items.map(item => db.collection('productos').doc(item.producto_id));
+      const prodDocs = await Promise.all(prodRefs.map(ref => tx.get(ref)));
+
+      // ─── 2. TODAS LAS ESCRITURAS DESPUÉS ────────────────────────────
       const ordenRef = db.collection('ordenes_compra').doc();
       tx.set(ordenRef, {
         empresa_id, usuario_id, proveedor_id, proveedor_nombre,
@@ -72,13 +78,12 @@ router.post('/ordenes', verificarRol(['SUPERUSUARIO', 'ADMINISTRADOR']), async (
         estado: 'RECIBIDA', fecha: new Date().toISOString()
       });
 
-      // Actualizar stock de cada producto
-      for (const item of items) {
-        const prodRef = db.collection('productos').doc(item.producto_id);
-        const prodDoc = await tx.get(prodRef);
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const prodDoc = prodDocs[i];
         if (prodDoc.exists) {
           const stockActual = Number(prodDoc.data().stock_actual) || 0;
-          tx.update(prodRef, { stock_actual: stockActual + Number(item.cantidad) });
+          tx.update(prodRefs[i], { stock_actual: stockActual + Number(item.cantidad) });
           const movRef = db.collection('movimientos_inventario').doc();
           tx.set(movRef, {
             empresa_id, producto_id: item.producto_id, usuario_id,
@@ -87,7 +92,6 @@ router.post('/ordenes', verificarRol(['SUPERUSUARIO', 'ADMINISTRADOR']), async (
           });
         }
       }
-      return ordenRef;
     });
 
     res.status(201).json({ message: 'Orden de compra registrada', numero });
