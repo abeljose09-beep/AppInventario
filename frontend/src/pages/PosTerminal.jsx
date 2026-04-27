@@ -23,6 +23,7 @@ export default function PosTerminal() {
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
   const [mostrarResultadosCliente, setMostrarResultadosCliente] = useState(false);
   const [tipoPago, setTipoPago] = useState('CONTADO');
+  const [isCartOpen, setIsCartOpen] = useState(false);
 
   useEffect(() => {
     cargarDatosBasicos();
@@ -111,6 +112,7 @@ export default function PosTerminal() {
       setCarrito([]);
       setClienteSeleccionado(null);
       setBusquedaCliente('');
+      setIsCartOpen(false);
       cargarDatosBasicos(); // Recargar stock real
     } catch (error) {
       console.error('Error procesando venta:', error);
@@ -141,8 +143,8 @@ export default function PosTerminal() {
           />
         </div>
 
-        <div style={{ 
-          display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', 
+        <div className="pos-products-grid" style={{ 
+          display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', 
           gap: '1rem', overflowY: 'auto', paddingRight: '0.5rem', alignContent: 'start'
         }}>
           {productosFiltrados.map(prod => (
@@ -158,8 +160,8 @@ export default function PosTerminal() {
               onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--glass-shadow)'; }}
             >
               <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', background: getGradient(prod.id) }}></div>
-              <div style={{ height: '90px', background: 'rgba(255,255,255,0.03)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '-0.25rem -0.25rem 0' }}>
-                <Package size={40} color="var(--accent-primary)" style={{ opacity: 0.8 }} />
+              <div style={{ height: '70px', background: 'rgba(255,255,255,0.03)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '-0.25rem -0.25rem 0' }}>
+                <Package size={32} color="var(--accent-primary)" style={{ opacity: 0.8 }} />
               </div>
               <div>
                 <h4 style={{ fontSize: '1.05rem', fontWeight: '600', marginBottom: '0.25rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-primary)' }} title={prod.nombre}>
@@ -189,31 +191,91 @@ export default function PosTerminal() {
         </div>
       </div>
 
+      {/* Botón flotante para el carrito en móvil */}
+      <div className="mobile-cart-toggle" onClick={() => setIsCartOpen(true)}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ position: 'relative' }}>
+            <ShoppingCart size={22} />
+            {carrito.length > 0 && (
+              <span style={{ position: 'absolute', top: '-8px', right: '-8px', background: 'var(--danger)', color: 'white', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem' }}>
+                {carrito.length}
+              </span>
+            )}
+          </div>
+          <span>Ver Carrito</span>
+        </div>
+        <span>${total.toFixed(2)}</span>
+      </div>
+
       {/* Panel Derecho: Carrito de Compras y Cliente */}
-      <div className="glass-panel pos-cart" style={{ flex: 1.2, display: 'flex', flexDirection: 'column', padding: '1.5rem', minWidth: '380px', height: '100%' }}>
+      <div className={`glass-panel pos-cart ${isCartOpen ? 'open' : ''}`} style={{ flex: 1.2, display: 'flex', flexDirection: 'column', padding: '1.5rem', minWidth: '380px', height: '100%' }}>
         
+        {/* Header solo visible en móvil para cerrar el carrito */}
+        <div className="mobile-cart-header" style={{ display: 'none', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid var(--glass-border)' }}>
+          <h2 style={{ fontSize: '1.2rem', margin: 0 }}>Tu Carrito</h2>
+          <button onClick={() => setIsCartOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
+        </div>
+
         {/* CSS Overrides para POS Movil */}
         <style>{`
           @media (max-width: 1024px) {
             .pos-container {
               flex-direction: column !important;
               height: auto !important;
-              gap: 2rem !important;
-            }
-            .pos-cart {
-              min-width: 100% !important;
-              height: auto !important;
-              position: sticky;
-              bottom: 0;
-              z-index: 10;
-              border-bottom: none;
-              border-left: none;
-              border-right: none;
-              border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-              box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
+              gap: 0 !important;
             }
             .pos-catalog {
-              padding-bottom: 20px;
+              padding-bottom: 90px !important; /* Espacio para el botón flotante */
+            }
+            .pos-products-grid {
+              grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
+            }
+            .mobile-cart-toggle {
+              display: flex !important;
+              position: fixed;
+              bottom: 1.5rem;
+              left: 1.5rem;
+              right: 1.5rem;
+              z-index: 90;
+              background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-hover) 100%);
+              color: white;
+              padding: 1rem 1.5rem;
+              border-radius: var(--radius-full);
+              box-shadow: 0 10px 25px -5px var(--accent-glow);
+              align-items: center;
+              justify-content: space-between;
+              font-weight: 600;
+              font-size: 1.1rem;
+              cursor: pointer;
+              transition: transform 0.2s;
+            }
+            .mobile-cart-toggle:active {
+              transform: scale(0.98);
+            }
+            .pos-cart {
+              position: fixed !important;
+              top: 0;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              z-index: 100;
+              background: var(--bg-primary) !important;
+              border-radius: 0 !important;
+              transform: translateY(100%);
+              transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+              min-width: 100% !important;
+              padding: 1rem !important;
+            }
+            .pos-cart.open {
+              transform: translateY(0);
+            }
+            .mobile-cart-header {
+              display: flex !important;
+            }
+          }
+          @media (min-width: 1025px) {
+            .mobile-cart-toggle {
+              display: none !important;
             }
           }
         `}</style>
