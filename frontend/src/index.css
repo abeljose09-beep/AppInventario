@@ -74,6 +74,40 @@ body {
   .main-content {
     padding: 1rem !important;
   }
+
+  .cobro-header-group {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.5rem !important;
+  }
+  
+  .cobro-header-group > div {
+    text-align: left !important;
+  }
+
+  .cobro-card {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 1rem !important;
+  }
+
+  .cobro-saldo {
+    text-align: left !important;
+    width: 100%;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--glass-border);
+  }
+
+  .cobro-actions {
+    width: 100%;
+    justify-content: space-between !important;
+    margin-top: 0.5rem;
+  }
+
+  .cobro-actions input {
+    flex: 1;
+  }
 }
 
 
@@ -193,3 +227,21 @@ a:hover {
 .mt-4 { margin-top: var(--spacing-md); }
 .mb-4 { margin-bottom: var(--spacing-md); }
 .w-full { width: 100%; }
+
+/* Cobros Styles */
+.cobro-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem;
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  gap: 1rem;
+  transition: all var(--transition-normal);
+}
+
+.cobro-card:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+}

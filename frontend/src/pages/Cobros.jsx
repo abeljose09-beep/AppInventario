@@ -104,7 +104,7 @@ export default function Cobros() {
         <div style={{ display: 'grid', gap: '2rem' }}>
           {clientesConDeuda.map((grupo, idx) => (
             <div key={idx} className="glass-panel" style={{ padding: '1.5rem', borderLeft: '4px solid var(--warning)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <div className="cobro-header-group" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                 <div>
                   <h2 style={{ fontSize: '1.4rem', color: 'var(--text-primary)' }}>{grupo.nombre}</h2>
                   <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{grupo.cuentas.length} facturas pendientes</p>
@@ -119,11 +119,7 @@ export default function Cobros() {
 
               <div style={{ display: 'grid', gap: '1rem' }}>
                 {grupo.cuentas.map(cuenta => (
-                  <div key={cuenta.id} className="cobro-card" style={{ 
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-                    padding: '1.25rem', backgroundColor: 'rgba(255,255,255,0.03)', 
-                    border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', gap: '1rem'
-                  }}>
+                  <div key={cuenta.id} className="cobro-card">
                     <div style={{ flex: 1 }}>
                       <p style={{ fontWeight: '600', fontSize: '0.95rem' }}>Ref: {cuenta.numero_referencia}</p>
                       <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Total factura: ${cuenta.total.toFixed(2)}</p>
@@ -133,12 +129,12 @@ export default function Cobros() {
                       </div>
                     </div>
 
-                    <div style={{ textAlign: 'center', minWidth: '100px' }}>
+                    <div className="cobro-saldo" style={{ textAlign: 'center', minWidth: '100px' }}>
                       <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Saldo Pendiente</p>
                       <p style={{ fontWeight: 'bold', color: 'var(--warning)' }}>${cuenta.saldo_pendiente.toFixed(2)}</p>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <div className="cobro-actions" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                       <input 
                         type="number" 
                         className="input-field" 
@@ -147,10 +143,10 @@ export default function Cobros() {
                         onChange={(e) => handleMontoChange(cuenta.id, e.target.value)}
                         style={{ width: '90px', padding: '0.4rem', fontSize: '0.85rem' }}
                       />
-                      <button className="btn btn-secondary" onClick={() => registrarAbono(cuenta.id, cuenta.saldo_pendiente)} style={{ padding: '0.4rem 0.8rem' }}>
+                      <button className="btn btn-secondary" onClick={() => registrarAbono(cuenta.id, cuenta.saldo_pendiente)} style={{ padding: '0.4rem 0.8rem' }} title="Registrar abono">
                         <CheckCircle size={16} color="var(--success)" />
                       </button>
-                      <button className="btn" style={{ backgroundColor: '#25D366', color: 'white', padding: '0.4rem 0.8rem' }} onClick={() => enviarWhatsApp(cuenta)}>
+                      <button className="btn" style={{ backgroundColor: '#25D366', color: 'white', padding: '0.4rem 0.8rem' }} onClick={() => enviarWhatsApp(cuenta)} title="Enviar a WhatsApp">
                         <Send size={16} />
                       </button>
                     </div>
