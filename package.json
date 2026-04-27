@@ -1,0 +1,16 @@
+{
+  "name": "app-inventario-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build",
+    "install-all": "npm install && cd frontend && npm install && cd ../backend && npm install"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "cors": "^2.8.6",
+    "firebase-admin": "^13.8.0",
+    "jsonwebtoken": "^9.0.3",
+    "dotenv": "^17.4.2"
+  }
+}
