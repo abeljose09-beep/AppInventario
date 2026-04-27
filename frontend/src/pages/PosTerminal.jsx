@@ -39,7 +39,7 @@ export default function PosTerminal() {
         api.get('/inventario/productos'),
         api.get('/clientes')
       ]);
-      setProductos(resProd.data.filter(p => p.stock_actual > 0 && p.estado === 'ACTIVO'));
+      setProductos(resProd.data.filter(p => p.estado === 'ACTIVO'));
       setClientesBase(resCli.data);
     } catch (error) {
       console.error('Error cargando datos para POS:', error);
@@ -233,6 +233,7 @@ export default function PosTerminal() {
   const productosFiltrados = productos.filter(p => p.nombre.toLowerCase().includes(busquedaProd.toLowerCase()));
 
   return (
+    <>
     <div className="pos-container animate-fade-in" style={{ display: 'flex', gap: '1.5rem', height: 'calc(100vh - 100px)' }}>
       {/* Panel Izquierdo: Catálogo y Búsqueda */}
       <div className="pos-catalog" style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '1rem', minWidth: 0 }}>
@@ -532,6 +533,7 @@ export default function PosTerminal() {
         </div>
       </div>
     )}
+    </>
   );
 }
 
